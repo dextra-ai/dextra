@@ -1,0 +1,80 @@
+//a trading genration model
+
+
+timeframe = '1h'      # 1-hour candles
+sma_long = 200        # Long-term SMA
+amount = 0.3        # Amount of SOL to trade
+})
+
+# Function to fetch historical data
+def fetch_data(symbol, timeframe, limit=100):
+    ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+    ohlcv_df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+    ohlcv_df['timestamp'] = pd.to_datetime(ohlcv_df['timestamp'], unit='ms')
+    ohlcv_df.set_index('timestamp', inplace=True)
+    return ohlcv_df
+
+# Function to calculate SMAs
+def calculate_smas(df, short_window, long_window):
+    df['SMA_short'] = df['close'].rolling(window=short_window).mean()
+    df['SMA_long'] = df['close'].rolling(window=long_window).mean()
+    return df
+
+# Function to determine trade signal
+def get_signal(df):
+    last_row = df.iloc[-1]
+    if last_row['SMA_short'] > last_row['SMA_long']:
+        return 'buy'
+    elif last_row['SMA_short'] < last_row['SMA_long']:
+        return 'sell'
+    else:
+        return 'hold'
+
+# Function to execute buy order
+def buy(symbol, amount):
+    print(f"Executing Buy Order: {symbol} | Amount: {amount}")
+    order = exchange.create_market_buy_order(symbol, amount)
+    return order
+
+# Function to execute sell order
+def sell(symbol, amount):
+    print(f"Executing Sell Order: {symbol} | Amount: {amount}")
+    order = exchange.create_market_sell_order(symbol, amount)
+    return order
+
+# Function to check account balance
+def get_balance():
+    balance = exchange.fetch_balance()
+    return balance['free']['USDT']  # Check your available balance in USDT
+
+# Main trading loop
+def run_trading_bot():
+    while True:
+        # Fetch historical data
+        df = fetch_data(symbol, timeframe)
+
+        # Calculate SMAs
+        df = calculate_smas(df, sma_short, sma_long)
+
+        # Get trading signal (buy/sell/hold)
+        signal = get_signal(df)
+        print(f"Signal: {signal}")
+
+        # Check the balance of USDT for buying decision
+        balance = get_balance()
+
+        # Decide based on signal
+        if signal == 'buy' and balance > 10:  # Ensure you have enough balance to buy
+            print("Buy Signal Detected!")
+            buy(symbol, amount)
+        elif signal == 'sell' and balance > 0:  # Ensure you have the asset to sell
+            print("Sell Signal Detected!")
+            sell(symbol, amount)
+
+        # Sleep for the time frame duration before fetching new data
+        print("Waiting for next cycle...")
+        time.sleep(3600)  # Sleep for 1 hour (change for different timeframes)
+
+# Run the bot
+if __name__ == "__main__":
+    run_trading_bot()
